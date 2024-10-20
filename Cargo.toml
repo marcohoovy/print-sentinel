@@ -1,0 +1,21 @@
+[package]
+name = "print-sentinel"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0.90"
+chrono = "0.4.38"
+crossbeam-channel = "0.5.13"
+lazy_static = "1.5.0"
+parking_lot = { version = "0.12.3", features = ["deadlock_detection"] }
+rocket = "0.5.1"
+serde = { version = "1.0.210", features = ["derive"] }
+serde_json = "1.0.132"
+tokio = { version = "1.40.0", features = ["full"] }
+toml = "0.8.19"
+xmlrpc = "0.15.1"
+
+[features]
+default = []
+tailscale = []

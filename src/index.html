@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Print Status</title>
+        <style>
+            body {
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                height: 100vh;
+                background-color: #f4f4f4;
+                margin: 0;
+            }
+
+            .progress-container {
+                width: 80%;
+                background-color: #e0e0df;
+                border-radius: 25px;
+                overflow: hidden;
+            }
+
+            .progress-bar {
+                height: 30px;
+                width: 0;
+                background-color: #76c7c0;
+                border-radius: 25px 0 0 25px;
+                transition: width 0.25s;
+            }
+
+            .fix-right {
+                position: fixed;
+                right: 0;
+            }
+
+            input {
+                width: 50px;
+            }
+
+            section {
+                padding-top: 10px;
+                padding-bottom: 10px;
+            }
+
+            .time-info {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                background-color: #f4f4f4;
+                padding-top: 10px;
+                padding-bottom: 10px;
+                text-align: center;
+            }
+            
+        </style>
+    </head>
+    <body>
+
+        <div class="time-info">
+
+            <label class="switch" for="thermal-trigger">Problem?</label>
+            <input type="checkbox" id="thermal-trigger" disabled>
+
+            <label for="time-left">Time left: </label>
+            <input id="time-left" type="text" value="?" disabled/>
+
+            <label for="est-fin-time">Estimated Finish time: </label>
+            <input id="est-fin-time" type="text" value="?" disabled/>
+
+            <label for="therm-upset-threshold">Thermal Upset: </label>
+            <input id="therm-upset-threshold" type="number" value="15"/>
+
+            <label class="switch" for="thermal-toggle">Take Action against thermal runaway</label>
+            <input type="checkbox" id="thermal-toggle">
+
+        </div>
+
+        <div class="info">
+            <div class="progress-section">
+                <label for="print-progress-bar">Print Progress: </label>
+                <progress  id="print-progress-bar" value="0" max="100">0%</progress>
+                <input id="print-progress" type="text" value="?" disabled/>
+                <br>
+            </div>
+    
+            <div class="temp-stats">
+    
+                <span class="ext1-warning-icon">⚠️</span>
+                <label for="ext1-temp">Ext1 Temp: </label>
+                <input id="ext1-temp" type="text" value="?" disabled/>
+                <progress id="ext1-progress-bar" value="0" max="100">0%</progress>
+                <br>
+                <span class="bed-warning-icon">⚠️</span>
+                <label for="bed-temp">Bed Temp: </label>
+                <input id="bed-temp" type="text" value="?" disabled/>
+                <progress id="bed-progress-bar" value="0" max="100">0%</progress>
+                <br>
+
+                <!-- Target Temps -->
+                
+                <section>
+                    <label for="ext1-target">Ext1 Target: </label>
+                    <input id="ext1-target" type="text" value="?" disabled/>
+                    <br>
+                    <label for="bed-target">Bed Target: </label>
+                    <input id="bed-target" type="text" value="?" disabled/>
+                    <br>
+                </section>
+
+    
+            </div>
+
+            <div class="print-data" style="border-top: 20px;">
+                <label for="print-filename">Print filename: </label>
+                <input id="print-filename" type="text" value="?" disabled style="width: 200px;" />
+                <br>
+                <label for="print-z">Print Z: </label>
+                <input id="print-z" type="text" value="?" disabled style="width: 200px;"/>
+                <br>
+            </div>
+
+            <!-- <label class="switch" class="fix-right"> -->
+                <!-- Enable Control -->
+                <input type="checkbox" class="fix-right" id="control-toggle">
+            <!-- </label> -->
+
+            <br>
+            <section class="controls">
+                <button id="control-estop">Emergency Stop</button>
+                <button id="control-inspect">Inspect Mode</button>
+
+                <label for="print-file">File:</label>
+                <select name="print-file" id="print-file">
+                </select>
+                <button id="control-load">Load File</button>
+
+                <button id="control-start-print">Start Print</button>
+                <button id="control-resume-print">Resume Print</button>
+            </section>
+        </div>
+
+    </body>
+    <footer>
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                fetch('/files').then(res => res.json()).then(data => {
+                    data.data.forEach(element => {
+                        console.log(element);
+                        document.getElementById('print-file').innerHTML += `<option value="${element}">${element}</option>`
+                    });
+                    
+                });
+
+                fetch('/protection/runaway/state').then(res => res.json()).then(data => {
+                    document.getElementById('thermal-toggle').checked = data;
+                });
+
+                let width = 0;
+                const interval = setInterval(() => {
+                    fetch('/print/status').then(res => res.json()).then(data => {
+                        var progress = data.progress;
+
+                        if (progress === null) {
+                            progress = 0;
+                        }
+
+                        document.getElementById('print-progress-bar').value = progress;
+                        document.getElementById('print-progress').value = progress;
+
+                        document.getElementById('bed-progress-bar').value = data.temps.B[0];
+                        document.getElementById('bed-progress-bar').max = data.temps.B[1];
+
+                        document.getElementById('ext1-progress-bar').value = data.temps.T[0];
+                        document.getElementById('ext1-progress-bar').max = data.temps.T[1];
+
+                        document.getElementById('ext1-temp').value = data.temps.T[0]; //`${data.temps.T[0]}/${data.temps.T[1]}`;
+                        document.getElementById('bed-temp').value = data.temps.B[0]; //`${data.temps.B[0]}/${data.temps.B[1]}`;
+
+                        document.getElementById('ext1-target').value = data.temps.T[1];
+                        document.getElementById('bed-target').value = data.temps.B[1];
+
+                        document.getElementById('print-filename').value = data.filename.split('/')[data.filename.split('/').length - 1];
+                        document.getElementById('print-z').value = data.z;
+
+                        document.getElementById('time-left').value = (data.eta[0] / 60) / 60; // Turn into hours
+
+                        // Get the current time
+                        const now = new Date();
+                        const est_fin_time = new Date(now.getTime() + (data.eta[0] * 1000 ));
+                        document.getElementById('est-fin-time').value = est_fin_time.toLocaleTimeString();
+
+                        // Decide whether to show warning icons
+                        var threshold = document.getElementById('therm-upset-threshold').value;
+                        if ( (data.temps.T[1] - data.temps.T[0]) >= threshold ) {
+                            document.getElementsByClassName('ext1-warning-icon')[0].textContent = "⚠️";
+                        } else {
+                            document.getElementsByClassName('ext1-warning-icon')[0].textContent = "";
+                        }
+
+                        if ( (data.temps.B[1] - data.temps.B[0]) >= threshold ) {
+                            document.getElementsByClassName('bed-warning-icon')[0].textContent = "⚠️";
+                        } else {
+                            document.getElementsByClassName('bed-warning-icon')[0].textContent = "";
+                        }
+
+                    });
+
+                    fetch("/protection/runaway/triggered").then(res => res.json()).then(data => {
+                        document.getElementById('thermal-trigger').checked = data;                        
+                    });
+
+
+                }, 5000);
+
+                const controls_box = document.getElementsByClassName('controls')[0]
+                const control_estop = document.getElementById('control-estop');
+                const control_inspect = document.getElementById('control-inspect');
+                const control_load = document.getElementById('control-load');
+                const control_resume = document.getElementById('control-resume-print');
+                const control_start_print = document.getElementById('control-start-print');
+                const thermal_toggle = document.getElementById('thermal-toggle');
+
+                thermal_toggle.addEventListener('change', (event) => {
+                    fetch('/protection/runaway/state'+event.target.checked, {method: 'POST'});
+                });
+
+                document.getElementById("control-toggle").addEventListener('click', (event) => {
+                    control_estop.disabled = !event.target.checked;
+                    control_inspect.disabled = !event.target.checked;
+                    control_load.disabled = !event.target.checked;
+                    control_start_print.disabled = !event.target.checked;
+                    control_resume.disabled = !event.target.checked;
+                });
+
+                document.getElementById("control-toggle").checked = false;
+                control_estop.disabled = true;
+                control_inspect.disabled = true;
+                control_load.disabled = true;
+                control_start_print.disabled = true;
+                control_resume.disabled = true;
+
+                control_estop.addEventListener('click', (event) => {
+                    fetch('/print/command', {method: 'PUT', body: JSON.stringify({command: 'emergency_stop'})});
+                    alert("Emergency Stop!");
+                });
+
+                control_inspect.addEventListener('click', (event) => {
+                    fetch('/print/command', {method: 'PUT', body: JSON.stringify({command: 'inspect'})});
+                });
+
+                control_load.addEventListener('click', (event) => {
+                    fetch('/print/command', {method: 'PUT', body: JSON.stringify({command: 'load', data: document.getElementById('print-file').value})});
+                });
+
+                control_start_print.addEventListener('click', (event) => {
+                    fetch('/print/command', {method: 'PUT', body: JSON.stringify({command: 'startprint'})});
+                });
+
+                control_resume.addEventListener('click', (event) => {
+                    fetch('/print/command', {method: 'PUT', body: JSON.stringify({command: 'resume'})});
+                });
+
+
+            });
+
+        </script>
+    </footer>
+</html>
