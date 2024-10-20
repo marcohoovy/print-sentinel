@@ -1,4 +1,5 @@
-use std::thread::spawn;
+use std::{thread::spawn};
+
 
 use crossbeam_channel::Sender;
 use lazy_static::lazy_static;
@@ -120,7 +121,25 @@ fn print_command(body: String) {
 
 #[launch]
 async fn rocket() -> _ {
-    rocket::build().mount("/", routes![
+    let rocket = rocket::build();
+
+
+    #[cfg(feature = "tailscale")]
+    let rocket = {
+        use std::net::Ipv4Addr;
+        use rocket::Config as RocketConfig;
+        use std::str::FromStr;
+    
+        let config = RocketConfig {
+            port: 8080,
+            address: Ipv4Addr::from_str(&crate::util::get_tailscale_ip().unwrap()).unwrap().into(),
+            ..RocketConfig::debug_default()
+        };
+
+        rocket.configure(config)
+    };
+
+    rocket.mount("/", routes![
         index,
         files,
         print_status,

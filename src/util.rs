@@ -78,3 +78,29 @@ pub fn put_printer_into_inspect_mode(pause: bool) {
     let _ = Request::new("send").arg("G1 Z20").call_url(HOST);
     let _ = Request::new("send").arg("G90").call_url(HOST);
 }
+
+#[cfg(feature = "tailscale")]
+pub fn get_tailscale_ip() -> Option<String> {
+    use std::process::Command;
+
+    let result = Command::new("tailscale")
+        .arg("ip")
+        .output();
+
+    match result {
+        Ok(output) => {
+            if output.status.success() {
+                let stdout = String::from_utf8_lossy(&output.stdout);
+                return stdout.lines().next().map(String::from);
+            } else {
+                let stderr = String::from_utf8_lossy(&output.stderr);
+                eprintln!("Error: {}", stderr.trim());
+                return None;
+            }
+        },
+        Err(e) => {
+            eprintln!("Error: Failed to execute tailscale command: {}", e);
+            return None;
+        }
+    }
+}

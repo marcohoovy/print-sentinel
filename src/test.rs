@@ -124,3 +124,7 @@ fn test_runaway_detection_unexpected_cooldown() {
     let result = crate::util::detect_downward_trend(VecDeque::from(example_data), 1.0);
     assert!(!result);
 }
+
+#[test]
+#[cfg(feature = "tailscale")]
+fn tailscale_ip_test(){ println!("{:?}",crate::util::get_tailscale_ip()); }
